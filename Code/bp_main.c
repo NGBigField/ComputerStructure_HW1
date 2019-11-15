@@ -2,6 +2,9 @@
 /* Main program                  					 	 */
 /* Usage: ./bp_main <trace filename>  				 	 */
 
+//Hallo Yotam;
+//  This is Nir
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
