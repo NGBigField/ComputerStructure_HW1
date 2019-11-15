@@ -55,6 +55,13 @@ void BP_update(uint32_t pc, uint32_t targetPc, bool taken, uint32_t pred_dst);
 void BP_GetStats(SIM_stats *curStats);
 
 
+
+// class BTB {
+// 	BTB(unsigned btbSize, unsigned historySize, unsigned tagSize, unsigned fsmState,
+// bool isGlobalHist, bool isGlobalTable, int Shared);
+// }
+
+
 #ifdef __cplusplus
 }
 #endif
