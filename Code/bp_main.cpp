@@ -4,7 +4,6 @@
 
 //Hallo Yotam;
 //  This is Nir
-
 //Hi shynet...........
 
 #include <stdio.h>
