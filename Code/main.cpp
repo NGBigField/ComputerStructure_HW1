@@ -12,14 +12,14 @@
 #include <stdbool.h>
 #include <math.h>
 
-// #include "bp.cpp"
+#include "bp.cpp"
 #include <stdint.h>
 
 
 
 int main()
 {
-    /*
+    
     unsigned btbSize = 4;
     unsigned historySize = 3;
     unsigned tagSize = 3;
@@ -34,7 +34,14 @@ int main()
         fprintf(stderr, "Predictor init failed\n");
         exit(8);
     }
-    */
+    
+    /*
+    uint32_t pc = 16;
+    uint32_t dst = 43;
+    bool is_taken =BP_predict(pc, &dst);
 
+    printf("%d" , (int)is_taken);
+    */
+   
     return 0;
 }

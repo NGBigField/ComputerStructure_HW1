@@ -40,7 +40,8 @@ typedef struct
 	SIM_stats stats;  //containing statistics about the btb
 } BTB;
 
-extern BTB* btb ;
+
+BTB* btb ; //global
 
 
 /*Proxy Functions Delecration: */
