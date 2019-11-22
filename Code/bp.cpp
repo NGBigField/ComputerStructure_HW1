@@ -182,7 +182,7 @@ bool is_correct_input_BP_init(unsigned btbSize, unsigned historySize, unsigned t
 
 	if (
 		btbSize <= 0 || historySize <= 0 || tagSize <= 0 
-		|| fsmState < 0 || fsmState > 3  2 || Shared < 0 || Shared >
+		|| fsmState < 0 || fsmState > 3  || Shared < 0 || Shared > 2
 		|| (  ceil(numBTBlines)  !=  floor(numBTBlines)  )
 		)
 	{
