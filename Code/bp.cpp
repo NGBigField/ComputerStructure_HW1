@@ -46,7 +46,7 @@ typedef struct
 	SIM_stats stats;  //containing statistics about the btb
 } BTB;
 
-extern BTB *btb;
+extern BTB *btb; // a pointer to a btb.
 
 int BP_init(unsigned btbSize, unsigned historySize, unsigned tagSize, unsigned fsmState,
 			bool isGlobalHist, bool isGlobalTable, int Shared)
@@ -243,9 +243,9 @@ uint32_t XOR(uint32_t a, uint32_t b)
 
 unsigned compute_btb_size()
 {
-	unsigned tagSize 	= btb->tagSize;
-	unsigned btbSize 	= btb->btbSize;
-	unsigned historySize= btb->historySize;
+	unsigned tag 	= btb->tagSize;
+	unsigned btb 	= btb->btbSize;
+	unsigned history= btb->historySize;
 
 
 	if (!btb->isGlobal_fsm)
