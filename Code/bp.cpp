@@ -6,13 +6,7 @@
 #include <math.h>
 #include <stdio.h>
 
-/*Proxy Functions Delecration: */
-bool is_correct_input_BP_init(unsigned btbSize, unsigned historySize, unsigned tagSize, unsigned fsmState,
-							  bool isGlobalHist, bool isGlobalTable, int Shared);
-uint32_t get_middle_bits(uint32_t input, int numLSBbits2ignore, int numBits2keep);
-bool taken_not_taken(unsigned fsmState);
-uint32_t XOR(uint32_t a, uint32_t b);
-unsigned compute_btb_size();
+const int PC_LENGTH = 32;
 
 
 enum shareStyles
@@ -46,7 +40,17 @@ typedef struct
 	SIM_stats stats;  //containing statistics about the btb
 } BTB;
 
-extern BTB *btb; // a pointer to a btb.
+extern BTB* btb ;
+
+
+/*Proxy Functions Delecration: */
+bool is_correct_input_BP_init(unsigned btbSize, unsigned historySize, unsigned tagSize, unsigned fsmState,
+							  bool isGlobalHist, bool isGlobalTable, int Shared);
+uint32_t get_middle_bits(uint32_t input, int numLSBbits2ignore, int numBits2keep);
+bool taken_not_taken(unsigned fsmState);
+uint32_t XOR(uint32_t a, uint32_t b);
+unsigned compute_btb_size(BTB* btb);
+
 
 int BP_init(unsigned btbSize, unsigned historySize, unsigned tagSize, unsigned fsmState,
 			bool isGlobalHist, bool isGlobalTable, int Shared)
@@ -56,7 +60,7 @@ int BP_init(unsigned btbSize, unsigned historySize, unsigned tagSize, unsigned f
 
 	try
 	{
-		BTB *btb = new BTB;
+		btb = new BTB;
 
 		btb->btbSize = btbSize;
 		btb->historySize = historySize;
@@ -68,7 +72,7 @@ int BP_init(unsigned btbSize, unsigned historySize, unsigned tagSize, unsigned f
 		btb->global_history = 0; //might not be used.
 		btb->stats.br_num =0;
 		btb->stats.flush_num =0;
-		btb->stats.size = compute_btb_size();
+		btb->stats.size = compute_btb_size(btb);
 
 		int numStateMachines = 2 ^ historySize;
 		if (btb->isGlobal_fsm)
@@ -106,16 +110,22 @@ int BP_init(unsigned btbSize, unsigned historySize, unsigned tagSize, unsigned f
 	}
 }
 
+
+
+
 bool BP_predict(uint32_t pc, uint32_t *dst)
 {
 	bool isTaken;
 	uint32_t target_dst;
+
+	int crnt_lineIndex;
 	uint32_t crnt_history;
 	int crnt_fsmIndex;
 	unsigned crnt_fsm;
 
 	uint32_t tag = get_middle_bits(pc, 2, btb->tagSize);
-	int crnt_lineIndex = (int)get_middle_bits(pc, 2, (int)log2(btb->btbSize));
+
+	crnt_lineIndex = (int)get_middle_bits(pc, 2, (int)log2(btb->btbSize));
 
 	uint32_t crntTag = btb->btb_lines[crnt_lineIndex]->tag;
 	if (crntTag == tag) //existing tag
@@ -143,7 +153,7 @@ bool BP_predict(uint32_t pc, uint32_t *dst)
 		}
 		else
 		{
-			printf("ERROR IN BP_predict: if(shared)     .... what the fuck");
+			printf("ERROR IN BP_predict: if(shared    .... what the fuck");
 		}
 
 		//where is the fsm:
@@ -182,7 +192,7 @@ void BP_update(uint32_t pc, uint32_t targetPc, bool taken, uint32_t pred_dst)
 	btb->stats.br_num = ...;
 	btb->stats.flush_num ; ...;
 	*/
-	btb->stats.size = compute_btb_size();
+	btb->stats.size = compute_btb_size(btb);
 	
 	return;
 }
@@ -241,18 +251,41 @@ uint32_t XOR(uint32_t a, uint32_t b)
 	return res;
 }
 
-unsigned compute_btb_size()
+unsigned compute_btb_size(BTB* btb)
 {
+	unsigned entries= btb->btbSize;
 	unsigned tag 	= btb->tagSize;
-	unsigned btb 	= btb->btbSize;
+	unsigned target = PC_LENGTH - 2;
 	unsigned history= btb->historySize;
+	unsigned fsm	= 2;
 
+	unsigned res; //result
 
-	if (!btb->isGlobal_fsm)
+	if (btb->isGlobal_history) 
 	{
-		if (!btb->isGlobal_history)
+		if (btb->isGlobal_fsm) 
 		{
-	
+			 res = entries*(tag + target  ) + history + fsm*( (int)pow(2,history) ) ; //global-global	
 		}
+		else // isLocal_fsm
+		{
+			res = entries*(tag + target + fsm*( (int)pow(2,history) )  )  + history  ;  //global-local
+		}
+		
 	}
+	else //isLocal_hisotry
+	{
+		if (btb->isGlobal_fsm) 
+		{
+			res = entries*(tag + target + history )  + fsm*( (int)pow(2,history) ) ; //local-global	
+		}
+		else // isLocal_fsm
+		{
+			res = entries*(tag + target + history + fsm*( (int)pow(2,history) ) ); //local-local
+		}
+		
+	}
+	
+
+	return res;
 }

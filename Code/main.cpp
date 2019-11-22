@@ -12,8 +12,10 @@
 #include <stdbool.h>
 #include <math.h>
 
-#include "bp.cpp"
+// #include "bp.cpp"
 #include <stdint.h>
+
+
 
 int main()
 {
@@ -32,14 +34,7 @@ int main()
         fprintf(stderr, "Predictor init failed\n");
         exit(8);
     }
-    return 0;
     */
-
-    uint32_t a = 5;
-    uint32_t b = 3;
-    uint32_t c = XOR(a,b);
-    
-    printf(  "%d"  , c  );
 
     return 0;
 }
