@@ -35,10 +35,11 @@ int main()
     return 0;
     */
 
-    //uint32_t pc = 1*(2^7)+1*(2^6)+1*(2^5)+0*(2^4)+1*(2^3)+1*(2^2)+0*(2^1)+0*(2^0) ;
+    uint32_t a = 5;
+    uint32_t b = 3;
+    uint32_t c = XOR(a,b);
     
-    int size = 8;
-    printf(  "%d"  , (int)log2( size)  );
+    printf(  "%d"  , c  );
 
     return 0;
 }
