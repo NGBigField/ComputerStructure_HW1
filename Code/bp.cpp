@@ -53,7 +53,9 @@ uint32_t XOR(uint32_t a, uint32_t b);
 unsigned compute_btb_size(BTB* btb);
 unsigned update_fsm(unsigned old_fsm, bool taken);
 void init_line(int crnt_lineIndex);
-int calc_fsm_index(uint32_t crnt_history);
+void update_line(uint32_t pc ,  int lineIndex  , bool was_taken );
+int calc_fsm_index(uint32_t pc , uint32_t crnt_history);
+
 
 
 int BP_init(unsigned btbSize, unsigned historySize, unsigned tagSize, unsigned fsmState,
@@ -115,8 +117,6 @@ int BP_init(unsigned btbSize, unsigned historySize, unsigned tagSize, unsigned f
 }
 
 
-
-
 bool BP_predict(uint32_t pc, uint32_t *dst)
 {
 	bool isTaken;
@@ -140,7 +140,7 @@ bool BP_predict(uint32_t pc, uint32_t *dst)
 		else
 			crnt_history = btb->btb_lines[crnt_lineIndex]->local_history;
 
-		crnt_fsmIndex = calc_fsm_index(crnt_history);
+		crnt_fsmIndex = calc_fsm_index(pc, crnt_history);
 
 		//where is the fsm:
 		if (btb->isGlobal_fsm)
@@ -173,80 +173,60 @@ bool BP_predict(uint32_t pc, uint32_t *dst)
 
 void BP_update(uint32_t pc, uint32_t targetPc, bool taken, uint32_t pred_dst)
 {
-	/*
-	should also update the btb->stats
-	conatining:
-			typedef struct {
-				unsigned flush_num;       // Machine flushes
-				unsigned br_num;      	  // Number of branch instructions
-				unsigned size;		      // Theoretical allocated BTB and branch predictor size
-			} SIM_stats;
-	*/
-	/*
-	btb->stats.br_num = ...;
-	btb->stats.flush_num ; ...;
-	*/
-
-
 	// updates the history (L/G),
 	bool predictedTaken = taken;
-	bool actualTaken = false;
-	if((targetPc == pred_dst)&&(predictedTaken)) actualTaken = true;
-	int crnt_lineIndex;
-	int crnt_fsmIndex;
-	uint32_t crnt_history;
-	unsigned crnt_fsm;
+	int crnt_lineIndex = (int)get_middle_bits(pc, 2, (int)log2(btb->btbSize));
 	
-	uint32_t tag = get_middle_bits(pc, 2, btb->tagSize);
-
-	crnt_lineIndex = (int)get_middle_bits(pc, 2, (int)log2(btb->btbSize));
-
-	uint32_t crntTag = btb->btb_lines[crnt_lineIndex]->tag;
-
-	if(targetPc != btb->btb_lines[crnt_lineIndex]->target_pc) //we need to delete this line and make a new one
-	{
-		init_line(crnt_lineIndex);
-	}
+	bool is_shouldHaveTaken = true ;
+	bool is_predictedCorrectly = true;
+	if ( targetPc == pc + 4 ) is_shouldHaveTaken = false;   //shouldn't have jumped
+	if ( targetPc != pred_dst ) is_predictedCorrectly = false; //shouldn't have jumped to  the predicted_dst . meaning that the tag was collided.
 	
 
-	if (crntTag == tag) //existing tag
+	/* Didn't jump,   and  "good call boy" */
+	if (!predictedTaken && !is_shouldHaveTaken)
 	{
-		// what is the  "history aquiring method":
-		if (btb->isGlobal_history)
-			crnt_history = btb->global_history;
-		else
-			crnt_history = btb->btb_lines[crnt_lineIndex]->local_history;
-		
-		//finding the fsm index
-		crnt_fsmIndex = calc_fsm_index(crnt_history);
-
-		//updating the fsm:
-		if (btb->isGlobal_fsm)
-			btb->global_fsms[crnt_fsmIndex] = update_fsm(btb->global_fsms[crnt_fsmIndex], actualTaken);
-		else
-			btb->btb_lines[crnt_lineIndex]->local_fsms[crnt_fsmIndex] = update_fsm(btb->btb_lines[crnt_lineIndex]->local_fsms[crnt_fsmIndex], actualTaken);
-
-		// updates history according to the "history aquiring method":
-		// By throwing the oldest bit and update the new one
-		if (btb->isGlobal_history)
-			btb->global_history = 2*get_middle_bits(btb->global_history, 0, 31) + (uint32_t)actualTaken;
-		else
-			btb->btb_lines[crnt_lineIndex]->local_history = 2*get_middle_bits(btb->btb_lines[crnt_lineIndex]->local_history, 2, 31) + (uint32_t)actualTaken;
-		
-		
-	}
-	else // new tag.
-	{
-		if (btb->isGlobal_history)
-			btb->global_history = 2*get_middle_bits(btb->global_history, 0, 31) + (uint32_t)actualTaken;
-		else
-			btb->btb_lines[crnt_lineIndex]->local_history = (uint32_t)actualTaken;
-		//what is the index in fsm to search:
-		crnt_fsm = btb->fsmStateAtInit;
-		target_dst = pc + 4;
+		//update history and fsm   : with notTaken
+		//no flush
+		update_line(pc , crnt_lineIndex  , false );
 	}
 
-	btb->stats.size = compute_btb_size(btb);
+	/*We didn't jump but we should have*/
+	if(!predictedTaken && is_shouldHaveTaken)
+	{
+		//update history and fsm   : with Taken
+		//flush
+		update_line(pc , crnt_lineIndex  , true );
+		btb->stats.flush_num++;
+	}
+
+	/* We jumped. and we should'nt have jumped */
+	if(predictedTaken && !is_shouldHaveTaken)
+	{
+		update_line(pc, crnt_lineIndex , false);
+		btb->stats.flush_num++;
+	}
+
+
+	/*We jumped and we should have.  "Good call boy"*/
+	if(predictedTaken && is_shouldHaveTaken)
+	{
+		/* We jupmed to the right place:*/
+		if (is_predictedCorrectly)
+		{
+			update_line(pc, crnt_lineIndex  , true );
+		}
+		/* We jumped to the wrong place:*/
+		else //predicted incorrectly
+		{
+			//Tags were collided.  the target is incorrect and we need to clean the line.
+			init_line(crnt_lineIndex);	
+			btb->stats.flush_num++;
+		}	
+	}
+	
+	/* Update stats:*/
+	btb->stats.br_num++;
 	
 	return;
 }
@@ -256,6 +236,9 @@ void BP_GetStats(SIM_stats *curStats)
 	*curStats = btb->stats ;
 	return;
 }
+
+
+
 
 /*=-=-==-=-=-=-=-=-=-==*/
 /*  PROXY FUNCTIONS:   */
@@ -298,6 +281,22 @@ bool taken_not_taken(unsigned fsmState)
 	else
 		return true; //taken
 }
+
+
+unsigned update_fsm(unsigned old_fsm, bool taken)
+{
+	if(taken) 
+	{
+		if (old_fsm<3) return (old_fsm+1);
+		return 3;
+	} 
+	else
+	{
+		if(old_fsm>0) return (old_fsm-1);
+		return 0;
+	}
+}
+
 
 uint32_t XOR(uint32_t a, uint32_t b)
 {
@@ -344,16 +343,6 @@ unsigned compute_btb_size(BTB* btb)
 	return res;
 }
 
-unsigned update_fsm(unsigned old_fsm, bool taken)
-{
-	if(taken) 
-	{
-		if (old_fsm<3) return (old_fsm+1);
-		return 3;
-	} 
-	if(old_fsm>0) return (old_fsm-1);
-	return 0;
-}
 
 void init_line(int crnt_lineIndex)
 {
@@ -364,7 +353,7 @@ void init_line(int crnt_lineIndex)
 	}
 	if(!btb->isGlobal_fsm)
 	{
-		int numStateMachines = (int)pow(2,historySize);
+		int numStateMachines = (int)pow(2, btb->historySize);
 		for(int i=0; i++; i < numStateMachines)
 		{
 			btb->btb_lines[crnt_lineIndex]->local_fsms[i] = btb->fsmStateAtInit; 
@@ -372,7 +361,39 @@ void init_line(int crnt_lineIndex)
 	}
 }
 
-int calc_fsm_index(uint32_t crnt_history)
+void update_line(uint32_t pc , int lineIndex  , bool was_taken )
+{
+
+	int crnt_fsmIndex;
+	uint32_t crnt_history;
+	unsigned crnt_fsm;
+
+	// what is the  "history aquiring method":
+	if (btb->isGlobal_history)
+		crnt_history = btb->global_history;
+	else
+		crnt_history = btb->btb_lines[lineIndex]->local_history;
+	
+
+	//finding the fsm index
+	crnt_fsmIndex = calc_fsm_index(pc, crnt_history);
+
+	//updating the fsm:
+	if (btb->isGlobal_fsm)
+		btb->global_fsms[crnt_fsmIndex] = update_fsm(btb->global_fsms[crnt_fsmIndex], was_taken);
+	else
+		btb->btb_lines[lineIndex]->local_fsms[crnt_fsmIndex] = update_fsm(btb->btb_lines[lineIndex]->local_fsms[crnt_fsmIndex], was_taken);
+
+	// updates history according to the "history aquiring method":
+	// By throwing the oldest bit and update the new one
+	uint32_t updated_history = 2*get_middle_bits(crnt_history, 0, 31) + (uint32_t)was_taken;
+	if (btb->isGlobal_history)
+		btb->global_history =updated_history;
+	else
+		btb->btb_lines[lineIndex]->local_history =  updated_history;	
+}
+
+int calc_fsm_index(uint32_t pc , uint32_t crnt_history)
 {
 		if (btb->shared == not_shared)
 		{
