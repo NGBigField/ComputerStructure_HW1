@@ -16,11 +16,11 @@
 #include <stdint.h>
 
 
-
 int main()
 {
-    
-    unsigned btbSize = 4;
+    printf("88");
+
+    unsigned btbSize = 8;
     unsigned historySize = 3;
     unsigned tagSize = 3;
     unsigned fsmState = 1;
@@ -35,13 +35,13 @@ int main()
         exit(8);
     }
     
-    /*
-    uint32_t pc = 16;
-    uint32_t dst = 43;
-    bool is_taken =BP_predict(pc, &dst);
+    
+    uint32_t pc = 24;
+    uint32_t targetPc = 28;
+    bool taken = true;
+    uint32_t dst = 64;
+    BP_update(pc, targetPc, taken, dst);
 
-    printf("%d" , (int)is_taken);
-    */
    
     return 0;
 }
