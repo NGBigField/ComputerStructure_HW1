@@ -2,6 +2,10 @@
 /* Main program                  					 	 */
 /* Usage: ./bp_main <trace filename>  				 	 */
 
+/*         PASSWORD:             */
+/*            compm              */
+
+
 //Hallo Yotam;
 //  This is Nir
 //Hi shynet...........
